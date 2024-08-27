@@ -1,18 +1,47 @@
 import { Controller, Post, Req, Res, Get, All } from "@nestjs/common";
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
+import { google } from 'googleapis';
 import { AuthService } from "./auth.service";
+import { GoogleService } from "src/googlehome/google.service";
+import { smarthome } from "actions-on-google";
 
-@Controller('auth')
+@Controller()
 export class AuthController {
 
-    constructor(private readonly authService: AuthService) {}
+    private USER_ID = '123';
+    private app = smarthome();
+
+    private auth = new google.auth.GoogleAuth({
+        keyFilename: 'smart-home-key.json',
+        scopes: ['https://www.googleapis.com/auth/homegraph'],
+      });
+  
+    private homegraph = google.homegraph({
+        version: 'v1',
+        auth: this.auth,
+    });
+
+
+    constructor(private readonly authService: AuthService, private readonly googleService: GoogleService) {}
 
     @Get('/login')
     async getLogin(@Req() req: Request, @Res() res: Response){
         console.log('Intercepting response ...',req.method, req.url);
         const responseurl = req.query.responseurl as string;
         const loginPage = this.authService.login(responseurl);
-        res.send(loginPage);
+        res.send(`
+        <html>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <body>
+            <form action="/login" method="post">
+                <input type="text" name="responseurl" value="${responseurl}" />
+                <button type="submit" style="font-size:14pt">
+                Link this service to Google
+                </button>
+            </form>
+            </body>
+        </html>
+        `);
     }
 
     @Post('/login')
@@ -23,7 +52,7 @@ export class AuthController {
         return res.redirect(responseurl);
     }
 
-    @All('/faketoken')
+    @All('/fakeauth')
     async handleFakeAuth(@Req() req: Request, @Res() res: Response): Promise<any>{
         console.log('Intercepting requests ...',req.query);
         console.log('Intercepting body ...',req.body);
@@ -47,9 +76,34 @@ export class AuthController {
 
     }
 
-    @All('/*')
-    async handleAllRequest(@Req() req: Request, @Res() res: Response, next: () => void){
-        console.log('Intercepting requests on Server 2:', req.method);
-        next();
+    @All('/requestsync*')
+    async handleRequestSync(@Req() req: Request, @Res() res: Response){
+        res.set('Access-Control-Allow-Origin', '*');
+        console.info(`Request SYNC for user ${this.USER_ID}`);
+        try{
+            const response = await this.homegraph.devices.requestSync({
+                requestBody: {
+                    agentUserId: this.USER_ID,
+                },
+            });
+            console.info('Request sync response:', response.status, response.data);
+            res.json(response.data);
+        } catch(error) {
+            console.error(error);
+            res.status(500).send(`Error requesting sync: ${error}`);
+        }
     }
+
+    @All('/reportstate')
+    async handleReportState(){
+
+    }
+
+    @All('/*')
+    async handleAllRequest(@Req() req: Request, @Res() res: Response){
+        console.log('Intercepting requests on Server 2:', req.method);
+        // Handle the request and send a response
+        res.send('Request 1 intercepted and handled.');
+    }
+
 }

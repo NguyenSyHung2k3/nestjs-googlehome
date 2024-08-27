@@ -1,13 +1,24 @@
-import { Injectable, Req } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
+import { google } from 'googleapis';
 import * as util from 'util';
 
 @Injectable({})
 export class AuthService {
-    constructor(){
+    constructor(){}
 
-    }
+    private auth = new google.auth.GoogleAuth({
+        keyFilename: 'smart-home-key.json',
+        scopes: ['https://www.googleapis.com/auth/homegraph'],
+      });
+  
+    private homegraph = google.homegraph({
+        version: 'v1',
+        auth: this.auth,
+    });
+    
+    private USER_ID = '123';
 
-    login = async (responseurl: string) => {
+    login = async (responseurl: string)=> {
         return `
         <html>
             <meta name="viewport" content="width=device-width, initial-scale=1">

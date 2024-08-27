@@ -1,11 +1,14 @@
 import { Injectable } from "@nestjs/common";
-import { google } from 'googleapis';
-import { SmartHome, smarthome } from 'actions-on-google';
+import { smarthome, SmartHomeV1ExecuteRequest, SmartHomeV1QueryRequest } from 'actions-on-google';
+import { SmartHomeV1SyncRequest } from "actions-on-google";
+
 @Injectable({})
 export class GoogleService {
-    private readonly USER_ID = 123;
-    private readonly homegraph;
-    private readonly app = smarthome();
+
+    private app = smarthome({
+      debug: true,
+    });
+
     private storeState = {
         on: true,
         isPaused: false,
@@ -13,30 +16,22 @@ export class GoogleService {
     };
 
     constructor() {
-        const auth = new google.auth.GoogleAuth({
-            keyFilename: 'smart-home-key.json',
-            scopes: ['https://www.googleapis.com/auth/homegraph'],
-        });
-        this.homegraph = google.homegraph({
-            version: 'v1',
-            auth: auth,
-        });
-        this.setupHandler();
-        
+      this.setupHandler();
     }
 
-    private setupHandler(){
-        this.app.onSync((body) => this.handleSync(body));
-        this.app.onQuery((body) => this.handleQuery(body));
-        this.app.onExecute((body) => this.handleExecute(body));
+    public setupHandler(){
+        this.app.onSync(async (body: SmartHomeV1SyncRequest) => await this.handleSync(body));
+        this.app.onQuery(async (body: SmartHomeV1QueryRequest) => await this.handleQuery(body));
+        this.app.onExecute(async (body: SmartHomeV1ExecuteRequest) => await this.handleExecute(body));
         this.app.onDisconnect(() => this.handleDisconnect());
     }
     
-    private handleSync(body: any): any{
+    public handleSync(body: SmartHomeV1SyncRequest): any{
+        console.log('SYNC request received:', body);
         return {
             requestId: body.requestId,
             payload: {
-              agentUserId: this.USER_ID,
+              agentUserId: '123',
               devices: [{
                 id: 'washer',
                 type: 'action.devices.types.WASHER',
@@ -90,8 +85,8 @@ export class GoogleService {
         };
     }
 
-    private queryFirebase = async (deviceId) => {
-        console.log("deviceId--", deviceId);
+    public queryDatabase = async (deviceId: string) => {
+        console.log("deviceId-", deviceId);
         return {
           on: this.storeState.on,
           isPaused: this.storeState.isPaused,
@@ -99,8 +94,8 @@ export class GoogleService {
         };
     };
 
-    private queryDevice = async (deviceId) => {
-        const data = await this.queryFirebase(deviceId);
+    public queryDevice = async (deviceId: string) => {
+        const data = await this.queryDatabase(deviceId);
         return {
           on: data.on,
           isPaused: data.isPaused,
@@ -115,11 +110,18 @@ export class GoogleService {
         };
     };
 
-    private async handleQuery(body: any): Promise<any>{
+    public async handleQuery(body: any): Promise<any>{
         const {requestId} = body;
         const payload = {
             devices: {},
         };
+        if (!body.inputs || body.inputs.length === 0) {
+          console.error('No inputs found in request:', JSON.stringify(body, null, 2));
+          return {
+            requestId: requestId,
+            payload: payload,
+          };
+        }
         const queryPromises = [];
         const intent = body.inputs[0];
         for (const device of intent.payload.devices) {
@@ -127,8 +129,9 @@ export class GoogleService {
             queryPromises.push(
                 this.queryDevice(deviceId)
                     .then((data) => {
-                    payload.devices[deviceId] = data;
-                    }) );
+                      payload.devices[deviceId] = data;
+                    }) 
+            );
         }
         await Promise.all(queryPromises);
         return {
@@ -137,9 +140,9 @@ export class GoogleService {
         };
     }
 
-    private async updateDevice(execution: any, deviceId: string) {
+    public async updateDevice(execution: any, deviceId: string) {
         const { params, command } = execution;
-        let state;
+        let state: any;
     
         switch (command) {
           case 'action.devices.commands.OnOff':
@@ -159,7 +162,7 @@ export class GoogleService {
         return state;
     }
 
-    private handleExecute(body: any): any{
+    public async handleExecute(body: SmartHomeV1ExecuteRequest): Promise<any>{
         const {requestId} = body;
 
         const result = {
@@ -169,6 +172,16 @@ export class GoogleService {
             online: true,
             },
         };
+
+        if (!body.inputs || body.inputs.length === 0) {
+          console.error('No inputs found in request:', JSON.stringify(body, null, 2));
+          return {
+            requestId: requestId,
+            payload: {
+              commands: [result],
+            },
+          };
+        }
 
         const executePromises = [];
         const intent = body.inputs[0];
@@ -187,12 +200,12 @@ export class GoogleService {
         }
     }
 
-    private async handleDisconnect(){
+    public async handleDisconnect(): Promise<any>{
         console.log('User account unlinked from Google Assistant');
         return {};
     }
 
     getApp() {
-        return this.app;
+      return this.app;
     }
 }

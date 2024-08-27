@@ -1,9 +1,12 @@
-import { Module } from "@nestjs/common";
+import { Module, NestModule, OnModuleInit } from "@nestjs/common";
 import { GoogleService } from "./google.service";
 import { GoogleController } from "./google.controller";
+import { MiddlewareConsumer } from "@nestjs/common";
+import { RequestInterceptorMiddleware } from "src/providers/middleware";
 
 @Module({
-    providers: [GoogleService],
-    controllers: [GoogleController]
+    controllers: [GoogleController],
+    providers: [GoogleService]
 })
-export class GoogleModule {}
+export class GoogleModule{
+}
