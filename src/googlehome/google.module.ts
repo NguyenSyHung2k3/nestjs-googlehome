@@ -3,10 +3,16 @@ import { GoogleService } from "./google.service";
 import { GoogleController } from "./google.controller";
 import { MiddlewareConsumer } from "@nestjs/common";
 import { RequestInterceptorMiddleware } from "src/providers/middleware";
+const express = require('express')();
 
 @Module({
     controllers: [GoogleController],
     providers: [GoogleService]
 })
-export class GoogleModule{
+export class GoogleModule implements NestModule {
+    configure(consumer: MiddlewareConsumer) {
+        consumer
+            .apply(RequestInterceptorMiddleware)
+            .forRoutes('*');  // Apply to all routes
+    }
 }

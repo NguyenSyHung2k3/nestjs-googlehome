@@ -1,24 +1,24 @@
 import { Injectable } from "@nestjs/common";
-import { google } from 'googleapis';
 import * as util from 'util';
+import { google } from 'googleapis';
 
 @Injectable({})
 export class AuthService {
-    constructor(){}
+    constructor() { }
 
     private auth = new google.auth.GoogleAuth({
         keyFilename: 'smart-home-key.json',
         scopes: ['https://www.googleapis.com/auth/homegraph'],
-      });
-  
+    });
+
     private homegraph = google.homegraph({
         version: 'v1',
         auth: this.auth,
     });
-    
+
     private USER_ID = '123';
 
-    login = async (responseurl: string)=> {
+    login = async (responseurl: string) => {
         return `
         <html>
             <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -35,21 +35,21 @@ export class AuthService {
     }
 
     handleFakeAuth = async (redirectUri: string, state: string) => {
-       return util.format('%s?code=%s&state=%s',
+        return util.format('%s?code=%s&state=%s',
             decodeURIComponent(redirectUri), 'xxxxxx',
             state);
     }
 
-    handleFakeToken = async(grantType: string) => {
+    handleFakeToken = async (grantType: string) => {
         const secondsInDay = 86400;
-        if(grantType === 'authorization_code'){
+        if (grantType === 'authorization_code') {
             return {
                 token_type: 'bearer',
                 access_token: '123access',
                 refresh_token: '123refresh',
                 expires_in: secondsInDay,
-            } 
-        } else if (grantType === 'refresh_token'){
+            }
+        } else if (grantType === 'refresh_token') {
             return {
                 token_type: 'bearer',
                 access_token: '123access',
