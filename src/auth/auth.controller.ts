@@ -2,14 +2,11 @@ import { Controller, Post, Req, Res, Get, All, Redirect, Next } from "@nestjs/co
 import { NextFunction, Request, Response } from "express";
 import { google } from 'googleapis';
 import { AuthService } from "./auth.service";
-import { GoogleService } from "src/googlehome/google.service";
 
 @Controller()
 export class AuthController {
 
-    private USER_ID = '123';
-
-    private auth = new google.auth.GoogleAuth({
+    private auth : any = new google.auth.GoogleAuth({
         keyFilename: 'smart-home-key.json',
         scopes: ['https://www.googleapis.com/auth/homegraph'],
     });
@@ -68,18 +65,19 @@ export class AuthController {
         console.log('Intercepting header ...', req.headers);
 
         const grantType = req.query.grant_type ? req.query.grant_type : req.body.grant_type;
+        console.log(`Grant Type ${grantType}`);
         const tokenResponse = this.authService.handleFakeToken(grantType);
         return res.status(HTTP_STATUS_OK).json(tokenResponse);
     }
 
-    @All('/requestsync*')
+    @Post('/requestsync*')
     async handleRequestSync(@Req() req: Request, @Res() res: Response) {
         res.set('Access-Control-Allow-Origin', '*');
-        console.info(`Request SYNC for user ${this.USER_ID}`);
+        console.info(`Request SYNC for user ${"ABC123"}`);
         try {
             const response = await this.homegraph.devices.requestSync({
                 requestBody: {
-                    agentUserId: this.USER_ID,
+                    agentUserId: "ABC123",
                 },
             });
             console.info('Request sync response:', response.status, response.data);
@@ -97,7 +95,7 @@ export class AuthController {
 
     @All('/reportstate')
     async handleReportState() {
-
+        
     }
 
     @All('/*')
