@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import * as util from 'util';
-import { google } from 'googleapis';
+const { google } = require("googleapis")
 
 @Injectable({})
 export class AuthService {
@@ -16,7 +16,7 @@ export class AuthService {
         auth: this.auth,
     });
 
-    private USER_ID = '123';
+
 
     login = async (responseurl: string) => {
         return `
@@ -36,7 +36,7 @@ export class AuthService {
 
     handleFakeAuth = async (redirectUri: string, state: string) => {
         return util.format('%s?code=%s&state=%s',
-            decodeURIComponent(redirectUri), 'xxxxxx',
+            decodeURIComponent(redirectUri), '123456',
             state);
     }
 
